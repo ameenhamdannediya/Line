@@ -1,0 +1,35 @@
+# ---- Build outputs ----
+out/
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# ---- Executables ----
+*.exe
+*.dll
+*.lib
+*.pdb
+
+# ---- Qt ----
+*_autogen/
+*.qrc.depends
+*.moc
+*.rcc
+
+# ---- Visual Studio ----
+.vs/
+*.vcxproj*
+*.sln
+*.user
+*.filters
+*.dir/
+
+# ---- OS ----
+Thumbs.db
+.DS_Store
+
+# ---- Logs ----
+*.log
