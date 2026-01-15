@@ -12,7 +12,7 @@ qt_standard_project_setup()
 
 add_executable(Line
     main.cpp
- "MainWindow.cpp" "MainWindow.h" "TimelineView.cpp" "TimelineView.h"   "NodeItem.h" "NodeItem.cpp" "ConnectionItem.cpp" "ConnectionItem.h" "StickNodeItem.h" "StickNodeItem.cpp" "StickConnectionItem.cpp" "StickConnectionItem.h")
+ "MainWindow.cpp" "MainWindow.h" "TimelineView.cpp" "TimelineView.h"   "NodeItem.h" "NodeItem.cpp" "ConnectionItem.cpp" "ConnectionItem.h"    )
 
 target_link_libraries(Line
     Qt6::Widgets

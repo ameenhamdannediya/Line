@@ -4,8 +4,7 @@
 class QGraphicsScene;
 class NodeItem;
 class ConnectionItem;
-class StickNodeItem;
-class StickConnectionItem;
+
 
 class TimelineView : public QGraphicsView
 {
@@ -42,8 +41,6 @@ private:
 
   
 
-    StickNodeItem* stickLeft = nullptr;
-    StickNodeItem* stickRight = nullptr;
 
 
 

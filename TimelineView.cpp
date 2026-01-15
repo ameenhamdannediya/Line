@@ -3,8 +3,7 @@
 #include "ConnectionItem.h"
 #include <QKeyEvent>
 #include <QScrollBar>
-#include "StickNodeItem.h"
-#include "StickConnectionItem.h"
+
 
 
 
@@ -40,20 +39,7 @@ TimelineView::TimelineView(QWidget* parent)
 
 
 
-    // ================= STICK LINE (WORLD SPACE) =================
-    qreal leftX = scene->sceneRect().left() + scene->sceneRect().width() * 0.05;
-    qreal centerX = scene->sceneRect().left() + scene->sceneRect().width() * 0.50;
-    qreal y = 0.0;
-
-    stickLeft = new StickNodeItem();
-    stickRight = new StickNodeItem();
-
-    stickLeft->setPos(leftX, y);
-    stickRight->setPos(centerX, y);
-
-    scene->addItem(stickLeft);
-    scene->addItem(stickRight);
-    scene->addItem(new StickConnectionItem(stickLeft, stickRight));
+    
 
 
 }
@@ -277,9 +263,13 @@ void TimelineView::mouseReleaseEvent(QMouseEvent* event)
             tempConnection->finalize(endNode);
         }
         else {
+            // CLEAN CANCEL: detach from start node
+            activeNode->removeConnection(tempConnection);
+
             scene->removeItem(tempConnection);
             delete tempConnection;
         }
+
     }
 
     tempConnection = nullptr;
@@ -333,14 +323,7 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
         QList<ConnectionItem*> edgesToDelete;
         QList<NodeItem*> nodesToDelete;
 
-        // Prevent deleting stick items
-        for (QGraphicsItem* item : scene->selectedItems()) {
-            if (dynamic_cast<StickConnectionItem*>(item) ||
-                dynamic_cast<StickNodeItem*>(item)) {
-                event->accept();
-                return;
-            }
-        }
+        
 
         for (QGraphicsItem* item : scene->selectedItems()) {
             if (auto* edge = dynamic_cast<ConnectionItem*>(item))
