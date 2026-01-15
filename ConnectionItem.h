@@ -10,7 +10,7 @@ public:
 
     void setEndPosition(const QPointF& pos);
     void finalize(NodeItem* endNode);
-    void updatePosition();
+    virtual void updatePosition();
     void paint(QPainter* painter,
         const QStyleOptionGraphicsItem* option,
         QWidget* widget = nullptr) override;

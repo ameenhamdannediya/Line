@@ -3,6 +3,8 @@
 #include "ConnectionItem.h"
 #include <QKeyEvent>
 #include <QScrollBar>
+#include "StickNodeItem.h"
+#include "StickConnectionItem.h"
 
 
 
@@ -33,6 +35,27 @@ TimelineView::TimelineView(QWidget* parent)
     setDragMode(QGraphicsView::NoDrag);
     setBackgroundBrush(QColor(30, 30, 30));  // dark gray (Blender-like)
     scene->setSceneRect(-5000, -5000, 10000, 10000);
+
+
+
+
+
+    // ================= STICK LINE (WORLD SPACE) =================
+    qreal leftX = scene->sceneRect().left() + scene->sceneRect().width() * 0.05;
+    qreal centerX = scene->sceneRect().left() + scene->sceneRect().width() * 0.50;
+    qreal y = 0.0;
+
+    stickLeft = new StickNodeItem();
+    stickRight = new StickNodeItem();
+
+    stickLeft->setPos(leftX, y);
+    stickRight->setPos(centerX, y);
+
+    scene->addItem(stickLeft);
+    scene->addItem(stickRight);
+    scene->addItem(new StickConnectionItem(stickLeft, stickRight));
+
+
 }
 
 
@@ -279,7 +302,9 @@ void TimelineView::wheelEvent(QWheelEvent* event)
     else if (event->angleDelta().y() < 0 && currentScale > minScale)
         scale(1.0 / zoomFactor, 1.0 / zoomFactor);
 
+
     event->accept();
+
 }
 
 
@@ -307,6 +332,15 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
 
         QList<ConnectionItem*> edgesToDelete;
         QList<NodeItem*> nodesToDelete;
+
+        // Prevent deleting stick items
+        for (QGraphicsItem* item : scene->selectedItems()) {
+            if (dynamic_cast<StickConnectionItem*>(item) ||
+                dynamic_cast<StickNodeItem*>(item)) {
+                event->accept();
+                return;
+            }
+        }
 
         for (QGraphicsItem* item : scene->selectedItems()) {
             if (auto* edge = dynamic_cast<ConnectionItem*>(item))
@@ -417,6 +451,11 @@ void TimelineView::splitSelectedEdge(const QPointF& scenePos)
     scene->clearSelection();
     newNode->setSelected(true);
 }
+
+
+
+
+
 
 
 

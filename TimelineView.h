@@ -4,6 +4,8 @@
 class QGraphicsScene;
 class NodeItem;
 class ConnectionItem;
+class StickNodeItem;
+class StickConnectionItem;
 
 class TimelineView : public QGraphicsView
 {
@@ -23,7 +25,6 @@ protected:
 
 private:
     void splitSelectedEdge(const QPointF& scenePos);
-
     void frameAll();
 
 
@@ -37,6 +38,13 @@ private:
 
     bool movingNode = false;
     QPointF lastMouseScenePos;
+
+
+  
+
+    StickNodeItem* stickLeft = nullptr;
+    StickNodeItem* stickRight = nullptr;
+
 
 
 };
