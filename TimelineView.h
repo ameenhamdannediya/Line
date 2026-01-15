@@ -22,6 +22,8 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
 
 private:
+    void splitSelectedEdge(const QPointF& scenePos);
+
     void frameAll();
 
 
@@ -35,4 +37,6 @@ private:
 
     bool movingNode = false;
     QPointF lastMouseScenePos;
+
+
 };

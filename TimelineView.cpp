@@ -4,6 +4,8 @@
 #include <QKeyEvent>
 #include <QScrollBar>
 
+
+
 #include <QGraphicsScene>
 #include <QMouseEvent>
 
@@ -119,26 +121,62 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+  
     // --- Left click on empty space ---
     if (!clickedNode && event->button() == Qt::LeftButton) {
+
+        QList<QGraphicsItem*> selected = scene->selectedItems();
+
+        // ================= EDGE SPLIT =================
+        if (selected.size() == 1) {
+            if (auto* edge = dynamic_cast<ConnectionItem*>(selected.first())) {
+
+                NodeItem* start = edge->getStartNode();
+                NodeItem* end = edge->getEndNode();
+
+                if (start && end) {
+                    NodeItem* newNode = new NodeItem();
+                    newNode->setPos(scenePos);
+                    scene->addItem(newNode);
+
+                    start->removeConnection(edge);
+                    end->removeConnection(edge);
+                    scene->removeItem(edge);
+                    delete edge;
+
+                    scene->addItem(new ConnectionItem(start, newNode));
+                    scene->addItem(new ConnectionItem(newNode, end));
+
+                    scene->clearSelection();
+                    newNode->setSelected(true);
+
+                    event->accept();
+                    return;
+                }
+            }
+        }
+
+        // ================= NORMAL NODE CREATE =================
         NodeItem* newNode = new NodeItem();
         newNode->setPos(scenePos);
         scene->addItem(newNode);
 
-        // --- Auto-connect from all currently selected nodes ---
-        for (QGraphicsItem* selItem : scene->selectedItems()) {
-            NodeItem* selNode = dynamic_cast<NodeItem*>(selItem);
-            if (selNode)
+        for (QGraphicsItem* sel : selected) {
+            if (auto* selNode = dynamic_cast<NodeItem*>(sel)) {
                 scene->addItem(new ConnectionItem(selNode, newNode));
+            }
         }
 
-        // Optional: select new node after creation
         scene->clearSelection();
         newNode->setSelected(true);
 
         event->accept();
         return;
+
     }
+
+
+
 
     // --- Left click on node = start drag-to-connect ---
     if (clickedNode && event->button() == Qt::LeftButton) {
@@ -265,45 +303,119 @@ void TimelineView::frameAll()
 
 void TimelineView::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() != Qt::Key_Backspace) {
-        QGraphicsView::keyPressEvent(event);
-        return;
-    }
+    if (event->key() == Qt::Key_Backspace) {
 
-    auto itemsToDelete = scene->selectedItems();
-    if (itemsToDelete.isEmpty()) return;
+        QList<ConnectionItem*> edgesToDelete;
+        QList<NodeItem*> nodesToDelete;
 
-    // Step 1: Delete selected edges first
-    for (QGraphicsItem* item : itemsToDelete) {
-        if (ConnectionItem* edge = dynamic_cast<ConnectionItem*>(item)) {
+        for (QGraphicsItem* item : scene->selectedItems()) {
+            if (auto* edge = dynamic_cast<ConnectionItem*>(item))
+                edgesToDelete.append(edge);
+            else if (auto* node = dynamic_cast<NodeItem*>(item))
+                nodesToDelete.append(node);
+        }
+
+        // ---- Delete edges FIRST ----
+        for (ConnectionItem* edge : edgesToDelete) {
             NodeItem* start = edge->getStartNode();
             NodeItem* end = edge->getEndNode();
+
             if (start) start->removeConnection(edge);
-            if (end) end->removeConnection(edge);
-            if (edge->scene()) edge->scene()->removeItem(edge);
+            if (end)   end->removeConnection(edge);
+
+            if (edge->scene())
+                edge->scene()->removeItem(edge);
+
             delete edge;
         }
-    }
 
-    // Step 2: Delete selected nodes
-    for (QGraphicsItem* item : itemsToDelete) {
-        if (NodeItem* node = dynamic_cast<NodeItem*>(item)) {
-            // Delete all edges connected to node (safe even if node has none)
+        // ---- Delete nodes SECOND ----
+        for (NodeItem* node : nodesToDelete) {
             QSet<ConnectionItem*> edges = node->getAllConnections();
             for (ConnectionItem* edge : edges) {
-                NodeItem* other = (edge->getStartNode() == node) ? edge->getEndNode() : edge->getStartNode();
+                NodeItem* other =
+                    (edge->getStartNode() == node)
+                    ? edge->getEndNode()
+                    : edge->getStartNode();
+
                 if (other) other->removeConnection(edge);
                 if (edge->scene()) edge->scene()->removeItem(edge);
                 delete edge;
             }
 
-            // Now delete the node itself
-            if (node->scene()) node->scene()->removeItem(node);
+            if (node->scene())
+                node->scene()->removeItem(node);
+
             delete node;
         }
+
+        event->accept();
+        return;
     }
 
-    event->accept();
+
+    // select all 
+    if (event->matches(QKeySequence::SelectAll)) {
+        for (QGraphicsItem* item : scene->items())
+            item->setSelected(true);
+        event->accept();
+        return;
+    }
+
+    
+
+
+
+    // --- New addition: Esc = frame all ---
+    if (event->key() == Qt::Key_Escape) {
+        frameAll();
+        event->accept();
+        return;
+    }
+
+    // For all other keys, call base
+    QGraphicsView::keyPressEvent(event);
+}
+
+void TimelineView::splitSelectedEdge(const QPointF& scenePos)
+{
+    QList<QGraphicsItem*> selected = scene->selectedItems();
+
+    // Only split if EXACTLY one item is selected and it's an edge
+    if (selected.size() != 1)
+        return;
+
+    ConnectionItem* edge = dynamic_cast<ConnectionItem*>(selected.first());
+    if (!edge)
+        return;
+
+    NodeItem* start = edge->getStartNode();
+    NodeItem* end   = edge->getEndNode();
+
+    if (!start || !end)
+        return;
+
+    // Create new node at click position
+    NodeItem* newNode = new NodeItem();
+    newNode->setPos(scenePos);
+    scene->addItem(newNode);
+
+    // Remove old edge safely
+    start->removeConnection(edge);
+    end->removeConnection(edge);
+
+    if (edge->scene())
+        edge->scene()->removeItem(edge);
+
+    delete edge;
+
+    // Create two new edges
+    scene->addItem(new ConnectionItem(start, newNode));
+    scene->addItem(new ConnectionItem(newNode, end));
+
+    // Update selection
+    scene->clearSelection();
+    newNode->setSelected(true);
 }
 
 
