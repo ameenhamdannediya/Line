@@ -46,7 +46,7 @@ void NodeItem::removeConnection(ConnectionItem* c)
 QVariant NodeItem::itemChange(GraphicsItemChange change,
     const QVariant& value)
 {
-    if (change == ItemPositionChange) {
+    if (change == ItemPositionHasChanged) {
         for (ConnectionItem* c : connections)
             if (c) c->updatePosition();
     }

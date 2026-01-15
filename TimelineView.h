@@ -39,7 +39,11 @@ private:
     QPointF lastMouseScenePos;
 
 
-  
+
+    bool grabbing = false;              // true when in “G grab” mode
+    QPointF grabStartMouseScenePos;     // original mouse position when G pressed
+    QMap<NodeItem*, QPointF> grabStartNodePositions; // store original positions
+
 
 
 
