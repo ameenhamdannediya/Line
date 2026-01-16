@@ -1,14 +1,11 @@
 #include "ConnectionItem.h"
-#include "NodeItem.h"
 #include <QPainter>
 
-ConnectionItem::ConnectionItem(NodeItem* start, NodeItem* end)
-    : startNode(start), endNode(end)
+ConnectionItem::ConnectionItem(QGraphicsItem* start, QGraphicsItem* end)
+    : startItem(start), endItem(end)
 {
     setZValue(-1);
     setFlag(QGraphicsItem::ItemIsSelectable);
-    startNode->addConnection(this);
-    if (endNode) endNode->addConnection(this);
     updatePosition();
 }
 
@@ -18,17 +15,19 @@ void ConnectionItem::setEndPosition(const QPointF& pos)
     updatePosition();
 }
 
-void ConnectionItem::finalize(NodeItem* end)
+void ConnectionItem::finalize(QGraphicsItem* end)
 {
-    endNode = end;
-    endNode->addConnection(this);
+    endItem = end;
     updatePosition();
 }
 
 void ConnectionItem::updatePosition()
 {
-    QPointF p1 = startNode->scenePos();
-    QPointF p2 = endNode ? endNode->scenePos() : tempEndPos;
+    if (!startItem)
+        return;
+
+    QPointF p1 = startItem->scenePos();
+    QPointF p2 = endItem ? endItem->scenePos() : tempEndPos;
 
     QPointF c1 = p1 + QPointF(curvature, 0);
     QPointF c2 = p2 - QPointF(curvature, 0);

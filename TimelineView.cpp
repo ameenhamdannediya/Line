@@ -2,7 +2,9 @@
 #include "NodeItem.h"
 #include "ConnectionItem.h"
 #include "Shortcuts.h"
+#include "BlockItem.h"
 
+#include <QMenu>
 #include <QKeyEvent>
 #include <QScrollBar>
 #include <QGraphicsScene>
@@ -92,6 +94,8 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
     QPointF scenePos = mapToScene(event->pos());
     QGraphicsItem* item = itemAt(event->pos());
     NodeItem* clickedNode = dynamic_cast<NodeItem*>(item);
+    BlockItem* clickedBlock = dynamic_cast<BlockItem*>(item);
+
 
     // ---- Middle mouse pan ----
     if (event->button() == Qt::MiddleButton) {
@@ -156,6 +160,13 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
             event->accept();
             return;
         }
+        // ---- Left click on block: select it ----
+        if (clickedBlock) {
+            scene->clearSelection();
+            clickedBlock->setSelected(true);
+            event->accept();
+            return;
+        }
 
         // ---- Left click on empty space: clear selection ----
         scene->clearSelection();
@@ -177,7 +188,7 @@ void TimelineView::mouseMoveEvent(QMouseEvent* event)
         QPointF currentMouseScenePos = mapToScene(event->pos());
         QPointF delta = currentMouseScenePos - grabStartMouseScenePos;
 
-        for (auto it = grabStartNodePositions.begin(); it != grabStartNodePositions.end(); ++it)
+        for (auto it = grabStartPositions.begin(); it != grabStartPositions.end(); ++it)
             it.key()->setPos(it.value() + delta);
 
         event->accept();
@@ -217,18 +228,18 @@ void TimelineView::mouseReleaseEvent(QMouseEvent* event)
 
     if (grabbing && event->button() == Qt::LeftButton) {
         grabbing = false;
-        grabStartNodePositions.clear();
+        grabStartPositions.clear();
         event->accept();
         return;
     }
 
     // Right click cancels grab
     if (grabbing && event->button() == Qt::RightButton) {
-        for (auto it = grabStartNodePositions.begin(); it != grabStartNodePositions.end(); ++it)
+        for (auto it = grabStartPositions.begin(); it != grabStartPositions.end(); ++it)
             it.key()->setPos(it.value());
 
         grabbing = false;
-        grabStartNodePositions.clear();
+        grabStartPositions.clear();
         event->accept();
         return;
     }
@@ -313,6 +324,28 @@ void TimelineView::frameAll()
 
 void TimelineView::keyPressEvent(QKeyEvent* event)
 {
+    //shift A
+    if (event->key() == Qt::Key_A &&
+        (event->modifiers() & Qt::ShiftModifier))
+    {
+        QMenu menu;
+        QMenu* blocksMenu = menu.addMenu("Blocks");
+
+        QAction* eventBlockAction = blocksMenu->addAction("Event");
+
+        QAction* selected = menu.exec(QCursor::pos());
+
+        if (selected == eventBlockAction) {
+            QPointF scenePos = mapToScene(mapFromGlobal(QCursor::pos()));
+
+            BlockItem* block = new BlockItem("Event");
+            block->setPos(scenePos);
+            scene->addItem(block);
+        }
+
+        event->accept();
+        return;
+    }
 
 
     // ---- Press G to grab selected nodes ----
@@ -322,13 +355,13 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
 
         grabbing = true;
         grabStartMouseScenePos = mapToScene(mapFromGlobal(QCursor::pos()));
-        grabStartNodePositions.clear();
+        grabStartPositions.clear();
 
         // Save original positions
         for (QGraphicsItem* item : scene->selectedItems()) {
-            if (auto* node = dynamic_cast<NodeItem*>(item))
-                grabStartNodePositions[node] = node->pos();
+            grabStartPositions[item] = item->pos();
         }
+
 
         event->accept();
         return;
@@ -337,13 +370,15 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
     // ---- Cancel grab ----
     if (grabbing && (event->key() == Qt::Key_Escape)) {
         // Reset positions
-        for (auto it = grabStartNodePositions.begin(); it != grabStartNodePositions.end(); ++it)
+        for (auto it = grabStartPositions.begin(); it != grabStartPositions.end(); ++it)
             it.key()->setPos(it.value());
 
         grabbing = false;
+        grabStartPositions.clear();
         event->accept();
         return;
     }
+
 
    
 
@@ -352,29 +387,21 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
 
         QList<ConnectionItem*> edgesToDelete;
         QList<NodeItem*> nodesToDelete;
-
-
-
-        
+        QList<BlockItem*> blocksToDelete;
 
         for (QGraphicsItem* item : scene->selectedItems()) {
             if (auto* edge = dynamic_cast<ConnectionItem*>(item))
                 edgesToDelete.append(edge);
             else if (auto* node = dynamic_cast<NodeItem*>(item))
                 nodesToDelete.append(node);
+            else if (auto* block = dynamic_cast<BlockItem*>(item))
+                blocksToDelete.append(block);
         }
 
         // ---- Delete edges FIRST ----
         for (ConnectionItem* edge : edgesToDelete) {
-            NodeItem* start = edge->getStartNode();
-            NodeItem* end = edge->getEndNode();
-
-            if (start) start->removeConnection(edge);
-            if (end)   end->removeConnection(edge);
-
             if (edge->scene())
                 edge->scene()->removeItem(edge);
-
             delete edge;
         }
 
@@ -382,13 +409,8 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
         for (NodeItem* node : nodesToDelete) {
             QSet<ConnectionItem*> edges = node->getAllConnections();
             for (ConnectionItem* edge : edges) {
-                NodeItem* other =
-                    (edge->getStartNode() == node)
-                    ? edge->getEndNode()
-                    : edge->getStartNode();
-
-                if (other) other->removeConnection(edge);
-                if (edge->scene()) edge->scene()->removeItem(edge);
+                if (edge->scene())
+                    edge->scene()->removeItem(edge);
                 delete edge;
             }
 
@@ -398,9 +420,17 @@ void TimelineView::keyPressEvent(QKeyEvent* event)
             delete node;
         }
 
+        // ---- Delete blocks LAST ----
+        for (BlockItem* block : blocksToDelete) {
+            if (block->scene())
+                block->scene()->removeItem(block);
+            delete block;
+        }
+
         event->accept();
         return;
     }
+
 
 
    
@@ -438,7 +468,6 @@ void TimelineView::splitSelectedEdge(const QPointF& scenePos)
 {
     QList<QGraphicsItem*> selected = scene->selectedItems();
 
-    // Only split if EXACTLY one item is selected and it's an edge
     if (selected.size() != 1)
         return;
 
@@ -446,18 +475,16 @@ void TimelineView::splitSelectedEdge(const QPointF& scenePos)
     if (!edge)
         return;
 
-    NodeItem* start = edge->getStartNode();
-    NodeItem* end   = edge->getEndNode();
+    auto* start = dynamic_cast<NodeItem*>(edge->getStartItem());
+    auto* end = dynamic_cast<NodeItem*>(edge->getEndItem());
 
     if (!start || !end)
-        return;
+        return; // only split node-to-node edges
 
-    // Create new node at click position
     NodeItem* newNode = new NodeItem();
     newNode->setPos(scenePos);
     scene->addItem(newNode);
 
-    // Remove old edge safely
     start->removeConnection(edge);
     end->removeConnection(edge);
 
@@ -466,14 +493,13 @@ void TimelineView::splitSelectedEdge(const QPointF& scenePos)
 
     delete edge;
 
-    // Create two new edges
     scene->addItem(new ConnectionItem(start, newNode));
     scene->addItem(new ConnectionItem(newNode, end));
 
-    // Update selection
     scene->clearSelection();
     newNode->setSelected(true);
 }
+
 
 
 

@@ -52,3 +52,7 @@ QVariant NodeItem::itemChange(GraphicsItemChange change,
     }
     return QGraphicsItem::itemChange(change, value);
 }
+QPointF NodeItem::getConnectionPos() const
+{
+    return scenePos();
+}

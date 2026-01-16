@@ -7,6 +7,7 @@ class ConnectionItem;
 class NodeItem : public QGraphicsItem
 {
 public:
+
     NodeItem();
     ~NodeItem();  // keep empty, do NOT delete edges here
 
@@ -20,6 +21,8 @@ public:
 
     // Safe access for deletion
     QSet<ConnectionItem*> getAllConnections() { return connections; }
+
+    virtual QPointF getConnectionPos() const;
 
 protected:
     QVariant itemChange(GraphicsItemChange change,
