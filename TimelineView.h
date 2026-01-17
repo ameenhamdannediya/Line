@@ -1,5 +1,6 @@
 #pragma once
 #include <QGraphicsView>
+#include <QMap>
 
 class QGraphicsScene;
 class NodeItem;
@@ -14,6 +15,9 @@ public:
 
     void drawBackground(QPainter* painter, const QRectF& rect);
 
+    QGraphicsScene* getScene() const { return scene; }
+    void clearAll();
+
 
 protected:
     void wheelEvent(QWheelEvent*) override;
@@ -21,6 +25,9 @@ protected:
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
+
+signals:
+    void nodeSelected(NodeItem* node);
 
 private:
     void splitSelectedEdge(const QPointF& scenePos);

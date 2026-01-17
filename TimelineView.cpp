@@ -89,9 +89,13 @@ void TimelineView::drawBackground(QPainter* painter, const QRectF& rect)
 
 void TimelineView::mousePressEvent(QMouseEvent* event)
 {
+
+
     QPointF scenePos = mapToScene(event->pos());
     QGraphicsItem* item = itemAt(event->pos());
     NodeItem* clickedNode = dynamic_cast<NodeItem*>(item);
+
+
 
     // ---- Middle mouse pan ----
     if (event->button() == Qt::MiddleButton) {
@@ -132,8 +136,10 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
 
             scene->clearSelection();
             newNode->setSelected(true);
+            emit nodeSelected(newNode);
             event->accept();
             return;
+
         }
 
         // ---- Shift + Left click (multi-select toggle) ----
@@ -149,6 +155,9 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
             scene->clearSelection();
             clickedNode->setSelected(true);
 
+            emit nodeSelected(clickedNode);
+
+
             activeNode = clickedNode;
             tempConnection = new ConnectionItem(activeNode);
             scene->addItem(tempConnection);
@@ -159,6 +168,7 @@ void TimelineView::mousePressEvent(QMouseEvent* event)
 
         // ---- Left click on empty space: clear selection ----
         scene->clearSelection();
+        emit nodeSelected(nullptr);
         event->accept();
         return;
     }
@@ -477,11 +487,8 @@ void TimelineView::splitSelectedEdge(const QPointF& scenePos)
 
 
 
-
-
-
-
-
-
-
+void TimelineView::clearAll()
+{
+    scene->clear();
+}
 
